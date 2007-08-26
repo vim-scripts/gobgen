@@ -1,0 +1,12 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=2003
+
+This plugin generate simple c and h templates for new GObject class and interface.
+There a bit of commands for this:
+- GOBGenerateC
+- GOBGenerateIC
+- GOBGenerateCModule
+- GOBGenerateH
+- GOBGenerateIH
+Script by default uses current file name for class name (optionaly you can type class name manually)
+
+For nice code formating it is need to enable ai option
