@@ -1,5 +1,5 @@
 " Vim GObject generator plugin
-" Last Change: 2007 Sep 13
+" Last Change: 2007 Oct 9
 " Maintainer: Andrey Dubravin <daa84@inbox.ru>
 " License: This file is placed in the public domain.
 
@@ -137,66 +137,16 @@ function! GOBGenerateC()
     call s:GOBGenerateCConstAndDest (prefix, typeName, typeNamePrivate, defineName)
 endfunction
 
-
-function! GOBGenerateH()
-    let prefix = expand("%:t:r")
-    let prefix = input("Enter object prefix name (e.g. flybird-directory):", prefix)
-
-    if prefix == ""
-	echohl ErrorMsg
-	echo "Can't create class without prefix"
-	echohl None
-	return
-    endif
-
-    let parentName = input("Enter parent class name (Default GObject):")
-    if parentName == ""
-	let parentName = "GObject"
-    endif
-
-    let prefix = substitute(prefix, "-", "_", "g")
-
-    let typeName = substitute(prefix, "_\\(.\\)\\|^\\(.\\)", "\\U\\1\\U\\2", "g")
-    let typeNamePrivate = typeName . "Private"
-
-    let defineName = toupper(prefix)
-
-    normal IG_BEGIN_DECLS
-    normal o
-    exec "normal otypedef struct _" . typeNamePrivate typeNamePrivate . ";"
-    normal o
-
-    " Variable memeber structure
-    normal otypedef struct {
-    exec "normal o" . parentName "parent;"
-    normal o
-    exec "normal o" . typeNamePrivate "*priv;"
-    exec "normal o}" typeName . ";"
-    normal o
-
-    normal otypedef struct {
-    exec "normal o" . parentName . "Class parent;"
-    exec "normal o}" typeName . "Class;"
-    normal o
-
-    " setup needed defines
-    exec "normal o#define" defineName . "_TYPE (" . prefix . "_get_type ())"
-    exec "normal o#define" defineName . "(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), " . defineName . "_TYPE," typeName . "))"
-    exec "normal o#define" defineName . "_CLASS(klass) (G_TYPE_CHECK_CLASS_CAST ((klass), " . defineName . "_TYPE," typeName . "Class))"
-    exec "normal o#define IS_" . defineName . "(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), " . defineName . "_TYPE))"
-    exec "normal o#define IS_" . defineName . "_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), " . defineName . "_TYPE))"
-    exec "normal o#define" defineName . "_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), " . defineName . "_TYPE," typeName . "Class))"
-
-    normal 3o
-
-    normal oG_END_DECLS
-endfunction
-
 function! GOBGenerateH()
     if input("Use filename to generate interface name (y/n)?", "y") != "y"
 	let prefix = input("Enter object prefix name (flybird-directory):")
     else
 	let prefix = expand("%:t:r")
+    endif
+
+    let parentName = input("Enter parent class name (Default GObject):")
+    if parentName == ""
+	let parentName = "GObject"
     endif
 
     if prefix == ""
