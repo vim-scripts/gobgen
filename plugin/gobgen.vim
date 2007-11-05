@@ -1,5 +1,5 @@
 " Vim GObject generator plugin
-" Last Change: 2007 Oct 9
+" Last Change: 2007 Nov 6
 " Maintainer: Andrey Dubravin <daa84@inbox.ru>
 " License: This file is placed in the public domain.
 
@@ -7,6 +7,11 @@ if exists("loaded_gobgen")
     finish
 endif
 let loaded_gobgen = 1
+
+function! GOBGetPrefix()
+    let prefix = expand("%:t:r")
+    return input("Enter object prefix name (e.g. flybird-directory):", prefix)
+endfunction
 
 function! s:GOBGenerateCConstAndDest(prefix, typeName, typeNamePrivate, defineName)
     normal o
@@ -56,8 +61,7 @@ function! s:GOBGenerateCConstAndDest(prefix, typeName, typeNamePrivate, defineNa
 endfunction
 
 function! GOBGenerateCModule()
-    let prefix = expand("%:t:r")
-    let prefix = input("Enter object prefix name (e.g. flybird-directory):", prefix)
+    let prefix = GOBGetPrefix()
 
     if prefix == ""
 	echohl ErrorMsg
@@ -112,8 +116,7 @@ endfunction
 
 
 function! GOBGenerateC()
-    let prefix = expand("%:t:r")
-    let prefix = input("Enter object prefix name (e.g. flybird-directory):", prefix)
+    let prefix = GOBGetPrefix()
 
     if prefix == ""
 	echohl ErrorMsg
@@ -137,23 +140,61 @@ function! GOBGenerateC()
     call s:GOBGenerateCConstAndDest (prefix, typeName, typeNamePrivate, defineName)
 endfunction
 
-function! GOBGenerateH()
-    if input("Use filename to generate interface name (y/n)?", "y") != "y"
-	let prefix = input("Enter object prefix name (flybird-directory):")
-    else
-	let prefix = expand("%:t:r")
-    endif
-
-    let parentName = input("Enter parent class name (Default GObject):")
-    if parentName == ""
-	let parentName = "GObject"
-    endif
+function! GOBGenerateIC()
+    let prefix = GOBGetPrefix()
 
     if prefix == ""
 	echohl ErrorMsg
 	echo "Can't create class without prefix"
 	echohl None
 	return
+    endif
+
+    let prefix = substitute(prefix, "-", "_", "g")
+    let typeName = substitute(prefix, "_\\(i.\\)\\|^\\(.\\)\\|_\\(.\\)\\", "\\U\\1\\U\\2", "g")
+
+    normal oGType
+    exec "normal o" . prefix . "_get_type ()"
+    normal o{
+    normal ostatic GType type = 0;
+    normal o
+    normal oif (!type)
+    normal o{
+    normal ostatic const GTypeInfo info =
+    normal o{
+    exec "normal osizeof (" . typeName . "Interface), /*class_size*/"
+    normal oNULL,		/* base_init */
+    normal oNULL,		/* base_finalize */
+    normal oNULL,
+    normal oNULL,		/* class_finalize */
+    normal oNULL,		/* class_data */
+    normal o0,
+    normal o0,              /* n_preallocs */
+    normal oNULL
+    normal o};
+    normal o
+
+    exec "normal otype = g_type_register_static (G_TYPE_INTERFACE, \"" . typeName . "\", &info, 0);"
+    normal o}
+    normal o
+    normal oreturn type;
+    normal o}
+
+endfunction
+
+function! GOBGenerateH()
+    let prefix = GOBGetPrefix()
+
+    if prefix == ""
+	echohl ErrorMsg
+	echo "Can't create class without prefix"
+	echohl None
+	return
+    endif
+
+    let parentName = input("Enter parent class name (Default GObject):")
+    if parentName == ""
+	let parentName = "GObject"
     endif
 
     let prefix = substitute(prefix, "-", "_", "g")
@@ -194,6 +235,45 @@ function! GOBGenerateH()
     normal oG_END_DECLS
 endfunction
 
+function! GOBGenerateIH()
+    let prefix = GOBGetPrefix()
+
+    if prefix == ""
+	echohl ErrorMsg
+	echo "Can't create class without prefix"
+	echohl None
+	return
+    endif
+
+
+    let prefix = substitute(prefix, "-", "_", "g")
+    let typeName = substitute(prefix, "_\\(i.\\)\\|^\\(.\\)\\|_\\(.\\)\\", "\\U\\1\\U\\2", "g")
+    let defineName = toupper(prefix)
+
+    normal IG_BEGIN_DECLS
+    normal o
+    exec "normal otypedef struct _" . typeName typeName . ";"
+    normal o
+
+    normal otypedef struct {
+    normal oGTypeInterface parent;
+    exec "normal o}" typeName . "Interface;"
+    normal o
+
+    " setup needed defines
+    exec "normal o#define" defineName . "_TYPE (" . prefix . "_get_type ())"
+    exec "normal o#define" defineName . "(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), " . defineName . "_TYPE," typeName . "))"
+    exec "normal o#define IS_" . defineName . "(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), " . defineName . "_TYPE))"
+    exec "normal o#define" defineName . "_INTERFACE(obj) (G_TYPE_INSTANCE_GET_INTERFACE ((obj), " . defineName . "_TYPE," typeName . "Class))"
+
+    normal 3o
+
+    normal oG_END_DECLS
+endfunction
+
 command! GOBGenerateC call GOBGenerateC()
 command! GOBGenerateH call GOBGenerateH()
 command! GOBGenerateCModule call GOBGenerateCModule()
+command! GOBGenerateIH call GOBGenerateIH()
+command! GOBGenerateIC call GOBGenerateIC()
+
